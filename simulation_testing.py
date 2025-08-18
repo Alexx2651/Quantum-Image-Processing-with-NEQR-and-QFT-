@@ -8,7 +8,6 @@ from Filter import create_neqr_image_with_filter
 
 
 def analyze_filter_results(qc, shots=8192):
-    """Run circuit and analyze filtering results"""
     simulator = Aer.get_backend('aer_simulator')
     compiled_circuit = transpile(qc, simulator)
     job = simulator.run(compiled_circuit, shots=shots)
@@ -35,7 +34,6 @@ def analyze_filter_results(qc, shots=8192):
 
 
 def visualize_quantum_images(filtered_results, unfiltered_results):
-    """Create simple 2x2 image visualization of quantum filter results"""
     # Initialize 2x2 images
     filtered_image = np.zeros((2, 2), dtype=float)
     unfiltered_image = np.zeros((2, 2), dtype=float)

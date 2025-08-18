@@ -58,9 +58,15 @@ def create_neqr_image_with_filter():
 
     # === STEP 3: APPLY QFT ===
     print("Building circuit: Applying QFT...")
-    qft(qc, 8)  # Apply QFT to intensity qubits only
+    # Temporarily swap position qubits (8,9) to beginning (0,1)
+    qc.swap(0, 8)
+    qc.swap(1, 9)
+    qft(qc, 2)  # Apply QFT to first 2 qubits (which now contain position data)
+    # Swap back
+    qc.swap(0, 8)
+    qc.swap(1, 9)
     qc.barrier()
-    print("✓ QFT applied to intensity qubits")
+    print("✓ QFT applied to position qubits")
 
     # === STEP 4: APPLY FILTER ORACLE ===
     # You can change this to "low_pass" for low-pass filtering
@@ -72,7 +78,13 @@ def create_neqr_image_with_filter():
 
     # === STEP 5: APPLY INVERSE QFT ===
     print("Building circuit: Applying inverse QFT...")
-    qft_inverse(qc, 8)  # Apply inverse QFT to intensity qubits
+    # Temporarily swap position qubits (8,9) to beginning (0,1)
+    qc.swap(0, 8)
+    qc.swap(1, 9)
+    qft_inverse(qc, 2)  # Apply inverse QFT to first 2 qubits (which contain position data)
+    # Swap back
+    qc.swap(0, 8)
+    qc.swap(1, 9)
     qc.barrier()
     print("✓ Inverse QFT applied")
 
