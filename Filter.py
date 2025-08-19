@@ -1,107 +1,101 @@
 from matplotlib import pyplot as plt
-from qiskit.visualization import plot_bloch_multivector
 from qiskit_aer import Aer
+import numpy as np
 
 # Import functions from local modules
 from NEQR import neqr_encoding
-from QFT import qft, qft_inverse
+from QFT import qft_to_position_qubits, inverse_qft_to_position_qubits
 
 
-def add_quantum_oracle(circuit, intensity_qubits, position_qubits, ancilla_qubit, filter_type="low_pass"):
+def add_ideal_filter_oracle(circuit, position_qubits, ancilla_qubit, filter_type="low_pass", D0=0.4):
     """
-    Add quantum oracle for frequency domain filtering
+    Add ideal frequency filter oracle based on AECE study methodology.
 
     Args:
         circuit: Quantum circuit
-        intensity_qubits: Range of intensity qubits (0-7)
-        position_qubits: Position qubits [qubit8, qubit9]
-        ancilla_qubit: Filter ancilla qubit
+        position_qubits: Position qubits indices [qubit8, qubit9]
+        ancilla_qubit: Filter ancilla qubit index
         filter_type: "high_pass" or "low_pass"
+        D0: Frequency threshold
     """
     circuit.barrier()
 
     if filter_type == "low_pass":
-        # Low-pass: Keep only DC component (00)
-        # Flip ancilla when both position qubits are 0
-        # Use X gates to create NOT logic, then controlled operation
-        circuit.x(position_qubits[0])  # NOT gate
-        circuit.x(position_qubits[1])  # NOT gate
-        circuit.ccx(position_qubits[0], position_qubits[1], ancilla_qubit)  # CCX when both are 0
-        circuit.x(position_qubits[0])  # Restore
-        circuit.x(position_qubits[1])  # Restore
+        # Low-pass: S_good = {(k,p) | D(k,p) ≤ D0}
+        # Flip ancilla when position = (0,0)
+        circuit.x(position_qubits[0])
+        circuit.x(position_qubits[1])
+        circuit.ccx(position_qubits[0], position_qubits[1], ancilla_qubit)
+        circuit.x(position_qubits[0])
+        circuit.x(position_qubits[1])
 
     elif filter_type == "high_pass":
-        # High-pass: Keep AC components (01, 10, 11) - everything except 00
-        # Flip ancilla when NOT (both position qubits are 0)
-        circuit.x(ancilla_qubit)  # Start with ancilla = 1
-        circuit.x(position_qubits[0])  # NOT gate
-        circuit.x(position_qubits[1])  # NOT gate
-        circuit.ccx(position_qubits[0], position_qubits[1], ancilla_qubit)  # Flip back to 0 when both pos are 0
-        circuit.x(position_qubits[0])  # Restore
-        circuit.x(position_qubits[1])  # Restore
+        # High-pass: S_good = {(k,p) | D(k,p) ≥ D0}
+        # Flip ancilla when position ≠ (0,0)
+        circuit.x(ancilla_qubit)
+        circuit.x(position_qubits[0])
+        circuit.x(position_qubits[1])
+        circuit.ccx(position_qubits[0], position_qubits[1], ancilla_qubit)
+        circuit.x(position_qubits[0])
+        circuit.x(position_qubits[1])
 
     circuit.barrier()
 
 
-def create_neqr_image_with_filter():
-    """Create NEQR quantum image with frequency domain filtering"""
+def create_neqr_image_with_ideal_filter(filter_type="high_pass", image_size=2):
+    """
+    Create NEQR quantum image processing circuit with ideal frequency filter.
 
-    print("=== QUANTUM IMAGE FILTERING CIRCUIT ===")
+    Args:
+        filter_type: "high_pass" or "low_pass"
+        image_size: Size of the square image (default: 2 for 2x2)
 
-    # Create the quantum circuit using NEQR encoding
+    Returns:
+        QuantumCircuit: Complete filtering circuit
+    """
+    # Initialize quantum circuit with NEQR encoding
     qc = neqr_encoding()
 
-    print(f"Total qubits: {qc.num_qubits}")
-    print(f"Intensity qubits: {list(range(8))}")
-    print(f"Position qubits: {list(range(8, 10))}")
-    print(f"Ancilla qubit: {10}")
+    # Define circuit parameters
+    position_qubits = [8, 9]
+    ancilla_qubit = 10
+    D0 = 0.2 * image_size
 
-    # === STEP 3: APPLY QFT ===
-    print("Building circuit: Applying QFT...")
-    # Temporarily swap position qubits (8,9) to beginning (0,1)
-    qc.swap(0, 8)
-    qc.swap(1, 9)
-    qft(qc, 2)  # Apply QFT to first 2 qubits (which now contain position data)
-    # Swap back
-    qc.swap(0, 8)
-    qc.swap(1, 9)
-    qc.barrier()
-    print("✓ QFT applied to position qubits")
+    # Apply QFT to position qubits
+    qft_to_position_qubits(qc, position_qubits)
 
-    # === STEP 4: APPLY FILTER ORACLE ===
-    # You can change this to "low_pass" for low-pass filtering
-    FILTER_TYPE = "high_pass"
-    print(f"Building circuit: Adding {FILTER_TYPE} filter oracle...")
+    # Apply ideal filter oracle
+    add_ideal_filter_oracle(qc, position_qubits, ancilla_qubit, filter_type, D0)
 
-    add_quantum_oracle(qc, list(range(8)), [8, 9], 10, FILTER_TYPE)
-    print(f"✓ {FILTER_TYPE.replace('_', '-').title()} filter oracle applied")
+    # Apply inverse QFT to position qubits
+    inverse_qft_to_position_qubits(qc, position_qubits)
 
-    # === STEP 5: APPLY INVERSE QFT ===
-    print("Building circuit: Applying inverse QFT...")
-    # Temporarily swap position qubits (8,9) to beginning (0,1)
-    qc.swap(0, 8)
-    qc.swap(1, 9)
-    qft_inverse(qc, 2)  # Apply inverse QFT to first 2 qubits (which contain position data)
-    # Swap back
-    qc.swap(0, 8)
-    qc.swap(1, 9)
-    qc.barrier()
-    print("✓ Inverse QFT applied")
-
-    # === STEP 6: MEASUREMENT ===
-    print("Building circuit: Adding measurements...")
+    # Add measurements
     qc.measure(range(11), range(11))
 
     return qc
 
 
-qc_filtered = create_neqr_image_with_filter()
-print('Filtered Circuit dimensions:')
-print('Circuit depth: ', qc_filtered.decompose().depth())
-print('Circuit size: ', qc_filtered.decompose().size())
+def main():
+    """Main function to create and visualize the quantum filtering circuit."""
+    # Create the filtering circuit
+    qc_filtered = create_neqr_image_with_ideal_filter(filter_type="high_pass", image_size=2)
 
-# Draw the circuit
-fig = qc_filtered.draw(output='mpl', style='iqp', scale=0.75, fold=-1)
-plt.title('NEQR + QFT+Filter Circuit')
-plt.tight_layout()
-plt.show()
+    # Circuit statistics
+    depth = qc_filtered.decompose().depth()
+    size = qc_filtered.decompose().size()
+
+    print(f"Circuit depth: {depth}")
+    print(f"Circuit size: {size}")
+
+    # Visualize circuit
+    fig = qc_filtered.draw(output='mpl', style='iqp', scale=0.75, fold=-1)
+    plt.title('NEQR Quantum Image Filtering Circuit')
+    plt.tight_layout()
+    plt.show()
+
+    return qc_filtered
+
+
+if __name__ == "__main__":
+    qc_filtered = main()

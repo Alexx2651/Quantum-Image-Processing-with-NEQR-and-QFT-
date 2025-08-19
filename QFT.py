@@ -1,3 +1,4 @@
+import numpy as np
 from numpy import pi
 
 def qft_rotations(circuit, n):
@@ -42,3 +43,33 @@ def qft_rotations_inverse(circuit, n):
 
     # Recursively apply to remaining qubits
     qft_rotations_inverse(circuit, n - 1)
+
+
+def qft_to_position_qubits(circuit, position_qubits):
+    """
+    Apply 2-qubit QFT to position qubits.
+
+    Args:
+        circuit: Quantum circuit
+        position_qubits: Position qubits indices [qubit8, qubit9]
+    """
+    circuit.h(position_qubits[1])
+    circuit.cp(np.pi / 2, position_qubits[0], position_qubits[1])
+    circuit.h(position_qubits[0])
+    circuit.swap(position_qubits[0], position_qubits[1])
+    circuit.barrier()
+
+
+def inverse_qft_to_position_qubits(circuit, position_qubits):
+    """
+    Apply inverse 2-qubit QFT to position qubits.
+
+    Args:
+        circuit: Quantum circuit
+        position_qubits: Position qubits indices [qubit8, qubit9]
+    """
+    circuit.swap(position_qubits[0], position_qubits[1])
+    circuit.h(position_qubits[0])
+    circuit.cp(-np.pi / 2, position_qubits[0], position_qubits[1])
+    circuit.h(position_qubits[1])
+    circuit.barrier()
