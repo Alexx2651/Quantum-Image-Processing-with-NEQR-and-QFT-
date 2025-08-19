@@ -3,9 +3,6 @@ from qiskit_aer import Aer
 from qiskit import transpile
 import numpy as np
 
-# Import functions from local modules
-from Filter import create_neqr_image_with_ideal_filter
-
 
 def analyze_filter_results(qc, shots=8192):
     simulator = Aer.get_backend('aer_simulator')
@@ -104,9 +101,3 @@ def visualize_quantum_images(filtered_results, unfiltered_results):
 
     plt.tight_layout()
     plt.show()
-
-
-if __name__ == "__main__":
-    qc_filtered = create_neqr_image_with_ideal_filter()
-    filtered, unfiltered = analyze_filter_results(qc_filtered)
-    visualize_quantum_images(filtered, unfiltered)

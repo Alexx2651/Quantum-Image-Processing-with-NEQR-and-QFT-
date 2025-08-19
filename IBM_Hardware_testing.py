@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from simulation_testing import visualize_quantum_images
-from Filter import create_neqr_image_with_ideal_filter
 
 import time
 from qiskit import transpile
@@ -81,17 +80,3 @@ def analyze_ibm_results(result):
             unfiltered_results[key] = unfiltered_results.get(key, 0) + count
 
     return filtered_results, unfiltered_results
-
-
-def main():
-    service, backend = setup_ibm_quantum()
-    circuit = create_neqr_image_with_ideal_filter()
-    result = run_on_ibm_hardware(circuit, backend, shots=1024)
-
-    if result:
-        filtered, unfiltered = analyze_ibm_results(result)
-        visualize_quantum_images(filtered, unfiltered)
-
-
-if __name__ == "__main__":
-    main()
