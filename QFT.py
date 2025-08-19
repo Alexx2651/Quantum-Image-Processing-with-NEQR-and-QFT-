@@ -45,7 +45,7 @@ def qft_rotations_inverse(circuit, n):
     qft_rotations_inverse(circuit, n - 1)
 
 
-def qft_to_position_qubits(circuit, position_qubits):
+def qft_to_position_qubits(circuit):
     """
     Apply 2-qubit QFT to position qubits.
 
@@ -53,14 +53,14 @@ def qft_to_position_qubits(circuit, position_qubits):
         circuit: Quantum circuit
         position_qubits: Position qubits indices [qubit8, qubit9]
     """
-    circuit.h(position_qubits[1])
-    circuit.cp(np.pi / 2, position_qubits[0], position_qubits[1])
-    circuit.h(position_qubits[0])
-    circuit.swap(position_qubits[0], position_qubits[1])
+    circuit.h(9)  # Hadamard on qubit 9 (most significant)
+    circuit.cp(np.pi / 2, 8, 9)  # Controlled phase rotation
+    circuit.h(8)  # Hadamard on qubit 8 (least significant)
+    circuit.swap(8, 9)  # Swap for correct QFT ordering
     circuit.barrier()
 
 
-def inverse_qft_to_position_qubits(circuit, position_qubits):
+def inverse_qft_to_position_qubits(circuit):
     """
     Apply inverse 2-qubit QFT to position qubits.
 
@@ -68,8 +68,8 @@ def inverse_qft_to_position_qubits(circuit, position_qubits):
         circuit: Quantum circuit
         position_qubits: Position qubits indices [qubit8, qubit9]
     """
-    circuit.swap(position_qubits[0], position_qubits[1])
-    circuit.h(position_qubits[0])
-    circuit.cp(-np.pi / 2, position_qubits[0], position_qubits[1])
-    circuit.h(position_qubits[1])
+    circuit.swap(8, 9)  # Undo the swap first
+    circuit.h(8)  # Inverse Hadamard on qubit 8
+    circuit.cp(-np.pi / 2, 8, 9)  # Inverse controlled phase rotation
+    circuit.h(9)  # Inverse Hadamard on qubit 9
     circuit.barrier()

@@ -4,98 +4,71 @@ import numpy as np
 
 # Import functions from local modules
 from NEQR import neqr_encoding
-from QFT import qft_to_position_qubits, inverse_qft_to_position_qubits
+from QFT import qft, qft_inverse
 
 
 def add_ideal_filter_oracle(circuit, position_qubits, ancilla_qubit, filter_type="low_pass", D0=0.4):
-    """
-    Add ideal frequency filter oracle based on AECE study methodology.
-
-    Args:
-        circuit: Quantum circuit
-        position_qubits: Position qubits indices [qubit8, qubit9]
-        ancilla_qubit: Filter ancilla qubit index
-        filter_type: "high_pass" or "low_pass"
-        D0: Frequency threshold
-    """
     circuit.barrier()
 
     if filter_type == "low_pass":
-        # Low-pass: S_good = {(k,p) | D(k,p) ≤ D0}
-        # Flip ancilla when position = (0,0)
-        circuit.x(position_qubits[0])
-        circuit.x(position_qubits[1])
-        circuit.ccx(position_qubits[0], position_qubits[1], ancilla_qubit)
-        circuit.x(position_qubits[0])
-        circuit.x(position_qubits[1])
+        # Flip ancilla when position = (0,0) -> both qubits are 0
+        circuit.x(position_qubits[0])  # NOT qubit 8
+        circuit.x(position_qubits[1])  # NOT qubit 9
+        circuit.ccx(position_qubits[0], position_qubits[1], ancilla_qubit)  # CCX when both are 0
+        circuit.x(position_qubits[0])  # Restore qubit 8
+        circuit.x(position_qubits[1])  # Restore qubit 9
 
     elif filter_type == "high_pass":
-        # High-pass: S_good = {(k,p) | D(k,p) ≥ D0}
-        # Flip ancilla when position ≠ (0,0)
-        circuit.x(ancilla_qubit)
-        circuit.x(position_qubits[0])
-        circuit.x(position_qubits[1])
-        circuit.ccx(position_qubits[0], position_qubits[1], ancilla_qubit)
-        circuit.x(position_qubits[0])
-        circuit.x(position_qubits[1])
+        # Flip ancilla when position ≠ (0,0) -> NOT(both qubits are 0)
+        circuit.x(ancilla_qubit)  # Start with ancilla = 1
+        circuit.x(position_qubits[0])  # NOT qubit 8
+        circuit.x(position_qubits[1])  # NOT qubit 9
+        circuit.ccx(position_qubits[0], position_qubits[1], ancilla_qubit)  # Flip back to 0 when both are 0
+        circuit.x(position_qubits[0])  # Restore qubit 8
+        circuit.x(position_qubits[1])  # Restore qubit 9
 
     circuit.barrier()
 
 
-def create_neqr_image_with_ideal_filter(filter_type="high_pass", image_size=2):
-    """
-    Create NEQR quantum image processing circuit with ideal frequency filter.
+def create_neqr_image_with_ideal_filter():
+    """Create NEQR quantum image with ideal threshold filter like AECE study"""
 
-    Args:
-        filter_type: "high_pass" or "low_pass"
-        image_size: Size of the square image (default: 2 for 2x2)
-
-    Returns:
-        QuantumCircuit: Complete filtering circuit
-    """
-    # Initialize quantum circuit with NEQR encoding
+    # Create the quantum circuit using NEQR encoding with default pixel values (180, 110)
     qc = neqr_encoding()
 
-    # Define circuit parameters
-    position_qubits = [8, 9]
-    ancilla_qubit = 10
-    D0 = 0.2 * image_size
+    # === APPLY QFT TO POSITION QUBITS ===
+    qc.h(9)           # Hadamard on qubit 9 (most significant)
+    qc.cp(np.pi/2, 8, 9) # Controlled phase rotation
+    qc.h(8)           # Hadamard on qubit 8 (least significant)
+    qc.swap(8, 9)     # Swap for correct QFT ordering
+    qc.barrier()
 
-    # Apply QFT to position qubits
-    qft_to_position_qubits(qc, position_qubits)
+    # === APPLY IDEAL FILTER ===
+    IMAGE_SIZE = 2  # 2x2 image
+    D0 = 0.2 * IMAGE_SIZE  # D0 = 0.4
+    FILTER_TYPE = "high_pass"  # Change to "low_pass"
 
-    # Apply ideal filter oracle
-    add_ideal_filter_oracle(qc, position_qubits, ancilla_qubit, filter_type, D0)
+    add_ideal_filter_oracle(qc, [8, 9], 10, FILTER_TYPE, D0)
 
-    # Apply inverse QFT to position qubits
-    inverse_qft_to_position_qubits(qc, position_qubits)
+    # === APPLY INVERSE QFT TO POSITION QUBITS ===
+    qc.swap(8, 9)      # Undo the swap first
+    qc.h(8)            # Inverse Hadamard on qubit 8
+    qc.cp(-np.pi/2, 8, 9) # Inverse controlled phase rotation
+    qc.h(9)            # Inverse Hadamard on qubit 9
+    qc.barrier()
 
-    # Add measurements
+    # === MEASUREMENT ===
     qc.measure(range(11), range(11))
 
     return qc
 
 
-def main():
-    """Main function to create and visualize the quantum filtering circuit."""
-    # Create the filtering circuit
-    qc_filtered = create_neqr_image_with_ideal_filter(filter_type="high_pass", image_size=2)
+qc_filtered = create_neqr_image_with_ideal_filter()
+print('Circuit depth: ', qc_filtered.decompose().depth())
+print('Circuit size: ', qc_filtered.decompose().size())
 
-    # Circuit statistics
-    depth = qc_filtered.decompose().depth()
-    size = qc_filtered.decompose().size()
-
-    print(f"Circuit depth: {depth}")
-    print(f"Circuit size: {size}")
-
-    # Visualize circuit
-    fig = qc_filtered.draw(output='mpl', style='iqp', scale=0.75, fold=-1)
-    plt.title('NEQR Quantum Image Filtering Circuit')
-    plt.tight_layout()
-    plt.show()
-
-    return qc_filtered
-
-
-if __name__ == "__main__":
-    qc_filtered = main()
+# Draw the circuit
+fig = qc_filtered.draw(output='mpl', style='iqp', scale=0.75, fold=-1)
+plt.title('NEQR + Ideal Filter Circuit')
+plt.tight_layout()
+plt.show()

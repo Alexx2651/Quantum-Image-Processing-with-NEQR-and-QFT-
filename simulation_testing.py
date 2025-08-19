@@ -63,7 +63,7 @@ def visualize_quantum_images(filtered_results, unfiltered_results):
             unfiltered_image[row, col] += intensity * (count / total_unfiltered_shots)
 
     # Original image for reference
-    original_image = np.array([[180, 180], [110, 110]], dtype=float)
+    original_image = np.array([[0, 100], [200, 255]], dtype=float)
 
     # Create visualization
     fig, axes = plt.subplots(1, 3, figsize=(12, 4))
@@ -71,7 +71,7 @@ def visualize_quantum_images(filtered_results, unfiltered_results):
     # Original image
     axes[0].imshow(original_image, cmap='gray', vmin=0, vmax=255, interpolation='nearest')
     axes[0].set_title('Original NEQR Image\n(2x2 pixels)')
-    axes[0].set_xlabel('Pixel values: 180, 180, 110, 110')
+    axes[0].set_xlabel('Pixel values: 0, 100, 200, 255')
     for i in range(2):
         for j in range(2):
             axes[0].text(j, i, f'{int(original_image[i, j])}',

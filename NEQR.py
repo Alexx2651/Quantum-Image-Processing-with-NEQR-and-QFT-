@@ -6,10 +6,10 @@ def neqr_encoding(pixel_values=None):
     # Default pixel values if not provided
     if pixel_values is None:
         pixel_values = {
-            '00': '10110100',  # 180
-            '01': '10110100',  # 180
-            '10': '01101110',  # 110
-            '11': '01101110'   # 110
+            '00': '00000000',  # 0
+            '01': '01100100',  # 100
+            '10': '11001000',  # 200
+            '11': '11111111'   # 255
         }
 
     # Initialize quantum registers
@@ -31,17 +31,9 @@ def neqr_encoding(pixel_values=None):
     qc.barrier()
 
     # Encode pixel 00 (value = pixel_values['00'])
-    # For 180 = '10110100', we need to set the appropriate intensity qubits
-    value00 = pixel_values['00']
-    # Position 00 means both position qubits are 0, so we need to condition on that
-    # Use NOT gates to create the condition for position = 00
-    qc.x(8)  # NOT position qubit 0
-    qc.x(9)  # NOT position qubit 1
-    for i, bit in enumerate(value00[::-1]):  # Reverse order
-        if bit == '1':
-            qc.ccx(8, 9, i)  # Controlled on position = 00 (both inverted)
-    qc.x(8)  # Restore position qubit 0
-    qc.x(9)  # Restore position qubit 1
+    # Since qubits start in |0⟩ state and value00 is '00000000', use identity gates
+    for i in range(8):
+        qc.id(i)  # Identity gates for position 00 (value = 0)
     qc.barrier()
 
     # Encode pixel 01 (value = pixel_values['01'])
