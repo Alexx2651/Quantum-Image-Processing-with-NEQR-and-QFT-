@@ -12,7 +12,7 @@ D0 = 0.2 * IMAGE_SIZE  # D0 = 0.4
 FILTER_TYPE = "high_pass"  # Change to "low_pass"
 position_qubits = [8, 9]
 ancilla_qubit = 10
-ibm_hardware_test = "yes"
+ibm_hardware_test = "no"
 # Circuit creation
 qc = neqr_encoding()
 qft_to_position_qubits(qc)

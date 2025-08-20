@@ -42,53 +42,35 @@ def show_image(image):
     plt.show()
 
 
-def binarize_image(qc):
+def create_negative_image(qc):
     (intensity, position, ancilla) = qc.qregs
-    clreg = qc.clbits
+    (q0, q1, q2, q3, q4, q5, q6, q7) = intensity
 
-    (q0, q1, q2,q3,q4,q5,q6,q7) = intensity
-    (c0, c1,c2,c3,c4,c5,c6,c7,c8,c9,c10) = clreg
+    qc.x(q0)
+    qc.x(q1)
+    qc.x(q2)
+    qc.x(q3)
+    qc.x(q4)
+    qc.x(q5)
+    qc.x(q6)
+    qc.x(q7)
 
-    qc.measure(q7, c7) # q7 = intensity[7]
-
-    with qc.if_test((c7, 1)) as else_:
-        qc.reset(q0)
-        qc.reset(q1)
-        qc.reset(q2)
-        qc.reset(q3)
-        qc.reset(q4)
-        qc.reset(q5)
-        qc.reset(q6)
-        qc.x(q0)
-        qc.x(q1)
-        qc.x(q2)
-        qc.x(q3)
-        qc.x(q4)
-        qc.x(q5)
-        qc.x(q6)
-    with else_:
-        qc.reset(q0)
-        qc.reset(q1)
-        qc.reset(q2)
-        qc.reset(q3)
-        qc.reset(q4)
-        qc.reset(q5)
-        qc.reset(q6)
     return qc
 
 
-qc = neqr_encoding()
-qc.barrier()
-qc=binarize_image(qc)
-qc.barrier()
-qc.measure([0,1,2,3,4,5,6, 7, 8,9,10], [0,1,2,3,4,5,6, 7, 8,9,10])
-qc.draw(output='mpl', style='iqp', scale=0.75, fold=-1)
-plt.title('NEQR + binarization')
+qc_neg = neqr_encoding()
+qc_neg.barrier()
+qc_neg = create_negative_image(qc_neg)
+
+qc_neg.barrier()
+qc_neg.measure([0,1,2,3,4,5,6, 7, 8,9,10], [0,1,2,3,4,5,6, 7, 8,9,10])
+qc_neg.draw(output='mpl', style='iqp', scale=0.75, fold=-1)
+plt.title('NEQR + Negative')
 plt.tight_layout()
 plt.show()
 
 simulator = Aer.get_backend('aer_simulator')
-compiled_circuit = transpile(qc, simulator)
+compiled_circuit = transpile(qc_neg, simulator)
 job = simulator.run(compiled_circuit, shots=8192)
 result = job.result()
 counts = result.get_counts(compiled_circuit)
